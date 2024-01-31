@@ -104,9 +104,9 @@ Linux, Solaris, and MacOS X.
 
 See description of types in {@link exec:exec_options()}.
 
-The `exec-port' program requires the `SHELL' variable to be set. If you are
-running Erlang inside a docker container, you might need to ensure that `SHELL'
-is properly set prior to starting the emulator.
+The `exec-port` program defaults to using `/bin/sh` to execute your command.
+You can set the `SHELL` environment variable prior to starting the emulator
+to override that default.
 
 == Examples ==
 

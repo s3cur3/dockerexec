@@ -4,6 +4,8 @@
 
 namespace ei {
 
+static const char * default_shell = "/bin/sh";
+
 //------------------------------------------------------------------------------
 // DARWIN doesn't have ptsname_r()
 //------------------------------------------------------------------------------
@@ -617,7 +619,14 @@ pid_t start_child(CmdOptions& op, std::string& error)
         const char** p = argv;
 
         if (op.shell()) {
-            *p++ = getenv("SHELL");
+            const char * shell = getenv("SHELL");
+
+            if (!shell || strcmp(shell, "") == 0) {
+                *p++ = default_shell;
+            } else {
+                *p++ = shell;
+            }
+
             *p++ = "-c";
         }
 

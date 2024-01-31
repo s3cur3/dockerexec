@@ -145,7 +145,8 @@
 -type cmd() :: binary() | string() | [string()].
 %% Command to be executed. If specified as a string, the specified command
 %% will be executed through the shell. The current shell is obtained
-%% from environment variable `SHELL'. This can be useful if you
+%% from environment variable `SHELL', falling back to `/bin/sh`.
+%% This can be useful if you
 %% are using Erlang primarily for the enhanced control flow it
 %% offers over most system shells and still want convenient
 %% access to other shell features such as shell pipes, filename
@@ -370,8 +371,8 @@
 
 %%-------------------------------------------------------------------------
 %% @doc Supervised start an external program manager.
-%%      Note that the port program requires `SHELL' environment variable to
-%%      be set.
+%%      Note that the port program defaults to using `/bin/sh` to execute,
+%%      but you can use the `SHELL' environment variable to override that.
 %% @end
 %%-------------------------------------------------------------------------
 -spec start_link(exec_options()) -> {ok, pid()} | {error, any()}.
@@ -382,8 +383,8 @@ start_link(Options) when is_list(Options) ->
 %%-------------------------------------------------------------------------
 %% @equiv start_link/1
 %% @doc Start of an external program manager without supervision.
-%%      Note that the port program requires `SHELL' environment variable to
-%%      be set.
+%%      Note that the port program defaults to using `/bin/sh` to execute,
+%%      but you can use the `SHELL' environment variable to override that.
 %% @end
 %%-------------------------------------------------------------------------
 -spec start() -> {ok, pid()} | {error, any()}.

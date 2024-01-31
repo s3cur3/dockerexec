@@ -603,9 +603,6 @@ void initialize(int userid, bool use_alt_fds, bool is_root, bool requested_root)
     } else if (!is_root && userid > 0 && int(geteuid()) != userid) {
         DEBUG(true, "Cannot switch effective user to euid=%d", userid);
         exit(4);
-    } else if (!getenv("SHELL") || strcmp(getenv("SHELL"), "") == 0) {
-        DEBUG(true, "SHELL environment variable not set!");
-        exit(4);
     }
 
     // (is_root && requested_root && userid > 0)
