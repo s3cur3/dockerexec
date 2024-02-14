@@ -791,7 +791,7 @@ init([Options]) ->
             %Root, not IsRoot, NeedSudo, User/=undefined, User/="" ->
                 % Asked to enable root, but running as non-root, and have no SUID: use sudo.
             %    lists:append(["/usr/bin/sudo -u ", to_list(User), " ", Exe1, Args]);
-            Root, not IsRoot, NeedSudo, ((User/=undefined andalso User/="") orelse
+            Root, not IsRoot, NeedSudo, ((User/=undefined andalso User/="" andalso User/=EffUsr) orelse
                                          (EffUsr/=User andalso User/=undefined
                                                        andalso User/=root
                                                        andalso User/="root")) ->
@@ -1116,24 +1116,7 @@ check_options(Options) when is_list(Options) ->
     Users = proplists:get_value(limit_users, Options, default(limit_users)),
     User  = proplists:get_value(user,        Options),
     Root  = proplists:get_value(root,        Options, default(root)),
-    % When instructing to run as root, check that the port program has
-    % the SUID bit set or else use "sudo"
-    Exe   = case proplists:get_value(portexe, Options, undefined) of
-                undefined -> default(portexe);
-                Other     -> Other
-            end,
-    {SUID,NeedSudo} = is_suid_and_root_owner(Exe),
-    if Root, (User==undefined orelse User=="" orelse User == <<"">>) ->
-        % Asked to enable root, but User is not set
-        {error, "Not allowed to run without providing effective user {user,User}!"};
-    Root, Users==[] ->
-        % Asked to enable root, have SUID
-        {error, "Not allowed to run without restricting effective users {limit_users,Users}!"};
-    Root, User/=undefined, User/="", Users/=[] ->
-        ok;
-    not Root, SUID, not NeedSudo, Users==[] ->
-        {error, "Not allowed to run as SUID root without restricting effective users {limit_users,Users}!"};
-    not Root, User/=undefined ->
+    if not Root, User/=undefined ->
         {error, "Cannot specify effective user {user,User} in non-root mode!"};
         ok;
     not Root, Users/=[] ->
