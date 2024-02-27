@@ -629,27 +629,27 @@ void initialize(int userid, bool use_alt_fds, bool is_root, bool requested_root)
 
         struct passwd* pw;
         DEBUG(debug && (pw = getpwuid(geteuid())) != NULL,
-              "exec: running as: %s (euid=%d)\r\n", pw->pw_name, geteuid());
+              "dockerexec: running as: %s (euid=%d)\r\n", pw->pw_name, geteuid());
 
         #ifdef HAVE_CAP
         cap_t cur;
         if ((cur = cap_from_text("cap_setuid=eip cap_kill=eip cap_sys_nice=eip")) == 0) {
-            DEBUG(true, "exec: failed to convert cap_setuid & cap_sys_nice from text");
+            DEBUG(true, "dockerexec: failed to convert cap_setuid & cap_sys_nice from text");
             exit(8);
         }
         if (cap_set_proc(cur) < 0) {
-            DEBUG(true, "exec: failed to set cap_setuid & cap_sys_nice");
+            DEBUG(true, "dockerexec: failed to set cap_setuid & cap_sys_nice");
             exit(9);
         }
         cap_free(cur);
 
         if (debug) {
             cur = cap_get_proc();
-            DEBUG(true, "exec: current capabilities: %s", cur ? cap_to_text(cur, NULL) : "none");
+            DEBUG(true, "dockerexec: current capabilities: %s", cur ? cap_to_text(cur, NULL) : "none");
             cap_free(cur);
         }
         #else
-        DEBUG(debug, "exec: capability feature is not implemented for this platform!");
+        DEBUG(debug, "dockerexec: capability feature is not implemented for this platform!");
         #endif
 
     }
@@ -664,7 +664,7 @@ void initialize(int userid, bool use_alt_fds, bool is_root, bool requested_root)
     dev_null = open(CS_DEV_NULL, O_RDWR | O_CLOEXEC);
 
     if (dev_null < 0) {
-        DEBUG(true, "exec: cannot open %s: %s", CS_DEV_NULL, strerror(errno));
+        DEBUG(true, "dockerexec: cannot open %s: %s", CS_DEV_NULL, strerror(errno));
         exit(10);
     }
 

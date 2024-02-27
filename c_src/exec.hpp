@@ -317,7 +317,7 @@ struct CmdInfo {
     int             kill_timeout;       // Pid shutdown interval in sec before it's killed with SIGKILL
     bool            kill_group;         // Indicates if at exit the whole group needs to be killed
     int             success_code;       // Exit code to use on success
-    bool            managed;            // <true> if this pid is started externally, but managed by erlexec
+    bool            managed;            // <true> if this pid is started externally, but managed by dockerexec
     int             stream_fd[3];       // Pipe fd getting   process's stdin/stdout/stderr
     int             stdin_wr_pos   = 0; // Offset of the unwritten portion of the head item of stdin_queue
     int             dbg            = 0; // Debug flag

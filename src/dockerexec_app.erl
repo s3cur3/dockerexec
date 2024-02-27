@@ -2,17 +2,17 @@
 %%% File: $Id$
 %%%------------------------------------------------------------------------
 %%% @doc     This module implements application and supervisor behaviors
-%%%          of the `exec' application.
-%%% @author  Serge Aleynikov <saleyn@gmail.com>
+%%%          of the `dockerexec' application.
+%%% @author  Originally Serge Aleynikov, forked by Tyler Young
 %%% @version $Revision: 1.1 $
 %%% @end
 %%%----------------------------------------------------------------------
 %%% Created: 2003-06-25 by Serge Aleynikov <saleyn@gmail.com>
 %%% $URL$
 %%%------------------------------------------------------------------------
--module(exec_app).
--author('saleyn@gmail.com').
--id    ("$Id$").
+-module(dockerexec_app).
+-author('tyler@sleepeasy.app').
+-id("$Id$").
 
 -behaviour(application).
 -behaviour(supervisor).
@@ -59,20 +59,30 @@ init([]) ->
     Options =
         lists:foldl(
             fun(I, Acc) -> add_option(I, Acc) end,
-            [], [I || {I, _} <- exec:default()]),
+            [],
+            [I || {I, _} <- dockerexec:default()]
+        ),
     {ok, {
-        {one_for_one, 3, 30},               % Allow MaxR restarts within MaxT seconds
-        [{  exec,                           % Id       = internal id
-            {exec, start_link, [Options]},  % StartFun = {M, F, A}
-            permanent,                      % Restart  = permanent | transient | temporary
-            10000,                          % Shutdown - wait 10 seconds, to give child processes time to be killed off.
-            worker,                         % Type     = worker | supervisor
-            [exec]                          % Modules  = [Module] | dynamic
-        }]
+        % Allow MaxR restarts within MaxT seconds
+        {one_for_one, 3, 30},
+        % Id       = internal id
+        [
+            {dockerexec,
+                % StartFun = {M, F, A}
+                {dockerexec, start_link, [Options]},
+                % Restart  = permanent | transient | temporary
+                permanent,
+                % Shutdown - wait 10 seconds, to give child processes time to be killed off.
+                10000,
+                % Type     = worker | supervisor
+                worker,
+                % Modules  = [Module] | dynamic
+                [dockerexec]}
+        ]
     }}.
 
 add_option(Option, Acc) ->
-    case application:get_env(erlexec, Option) of
-    {ok, Value} -> [{Option, Value} | Acc];
-    undefined   -> Acc
+    case application:get_env(dockerexec, Option) of
+        {ok, Value} -> [{Option, Value} | Acc];
+        undefined -> Acc
     end.
