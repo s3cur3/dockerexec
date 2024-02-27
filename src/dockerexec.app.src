@@ -8,7 +8,7 @@
     {mod, {dockerexec_app, []}},
     {env, []},
     {exclude_paths, ["priv"]},
-    {maintainers, ["Serge Aleynikov"]},
+    {maintainers, ["Tyler Young"]},
     {licenses, ["BSD"]},
     {links, [{"GitHub", "https://github.com/s3cur3/dockerexec"}]}
 ]}.
