@@ -1,0 +1,14 @@
+{application, dockerexec, [
+    {description, "OS Process Manager"},
+    {vsn, "2.0.3"},
+    {id, "dockerexec"},
+    {modules, []},
+    {registered, [exec]},
+    {applications, [kernel, stdlib]},
+    {mod, {exec_app, []}},
+    {env, []},
+    {exclude_paths, ["priv"]},
+    {maintainers, ["Serge Aleynikov"]},
+    {licenses, ["BSD"]},
+    {links, [{"GitHub", "https://github.com/s3cur3/dockerexec"}]}
+]}.

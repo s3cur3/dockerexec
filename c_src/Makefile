@@ -1,6 +1,6 @@
 CURDIR		:= $(shell pwd)
 BASEDIR		:= $(abspath $(dir $(CURDIR)))
-PROJECT		?= erlexec
+PROJECT		?= dockerexec
 PROJECT		:= $(strip $(PROJECT))
 
 ERL_CXXFLAGS ?= $(shell erl -noshell -noinput -eval "io:format(\"-I~ts/erts-~ts/include -I~ts\", [code:root_dir(), erlang:system_info(version), code:lib_dir(erl_interface, include)]), halt(0).")
@@ -79,7 +79,7 @@ ifeq ($(UNAME_SYS),linux)
     LDFLAGS  += -lcap
   endif
 else ifeq ($(UNAME_SYS),darwin)
-  CXXFLAGS += -pie -DHAVE_SETREUID
+  CXXFLAGS += -pie -DHAVE_SETREUID -Wno-unused-command-line-argument
   LDFLAGS  += -flat_namespace -undefined suppress $(X64)
 else ifeq ($(uname_sys),solaris)
   CXXFLAGS += -dhave_setreuid

@@ -1,5 +1,5 @@
 
-   Erlexec - OS Process Manager for Erlang VM.
+   dockerexec - OS Process Manager for Erlang VM.
 
 @author Serge Aleynikov <saleyn at gmail dot com>
 @version {@vsn}
@@ -25,8 +25,8 @@ OS processes.
 == Download ==
 
 <ul>
-<li>Project's repository: [https://github.com/saleyn/erlexec]</li>
-<li>Git clone command: `git clone https://github.com/saleyn/erlexec.git'</li>
+<li>Project's repository: [https://github.com/s3cur3/dockerexec]</li>
+<li>Git clone command: `git clone https://github.com/s3cur3/dockerexec.git'</li>
 </ul>
 
 == Build ==
@@ -40,7 +40,7 @@ different effective users. In order to accomplish that, you need to set
 Linux capabilities on `exec-port' using the following command:
 
 ```
-sudo setcap cap_setuid,cap_kill,cap_sys_nice+eip _build/default/lib/erlexec/priv/*/exec-port
+sudo setcap cap_setuid,cap_kill,cap_sys_nice+eip _build/default/lib/dockerexec/priv/*/exec-port
 '''
 
 == Features ==
@@ -209,7 +209,7 @@ $ whoami
 serge
 
 # Make sure the exec-port can run as root:
-$ sudo _build/default/lib/erlexec/priv/*/exec-port --whoami
+$ sudo _build/default/lib/dockerexec/priv/*/exec-port --whoami
 root
 
 $ erl
@@ -305,7 +305,7 @@ ok
 '''
 
 === Managing an externally started OS process ===
-This command allows to instruct erlexec to begin monitoring given OS process
+This command allows to instruct dockerexec to begin monitoring given OS process
 and notify Erlang when the process exits. It is also able to send signals to
 the process and kill it.
 ```
