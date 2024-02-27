@@ -594,13 +594,7 @@ void initialize(int userid, bool use_alt_fds, bool is_root, bool requested_root)
     // only users from the `{limit_users, Users}` list are permitted
     // to be effective users.
 
-    if (is_root && userid == 0 && !requested_root) {
-        DEBUG(true, "Not allowed to run as root without setting effective user (-user option)!");
-        exit(4);
-    } else if (!is_root && userid == 0 && requested_root) {
-        DEBUG(true, "Requested to run as root (-user root), but effective user is not root!");
-        exit(4);
-    } else if (!is_root && userid > 0 && int(geteuid()) != userid) {
+    if (!is_root && userid > 0 && int(geteuid()) != userid) {
         DEBUG(true, "Cannot switch effective user to euid=%d", userid);
         exit(4);
     }
