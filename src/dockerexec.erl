@@ -1282,19 +1282,28 @@ is_suid_and_root_owner(File) ->
 
 check_options(Options) when is_list(Options) ->
     Users = proplists:get_value(limit_users, Options, default(limit_users)),
-    User = proplists:get_value(user, Options),
-    Root = proplists:get_value(root, Options, default(root)),
-    if
-        not Root, User /= undefined ->
-            {error, "Cannot specify effective user {user,User} in non-root mode!"};
+    User  = proplists:get_value(user,        Options),
+    Root  = proplists:get_value(root,        Options, default(root)),
+    % When instructing to run as root, check that the port program has
+    % the SUID bit set or else use "sudo"
+    Exe   = case proplists:get_value(portexe, Options, undefined) of
+                undefined -> default(portexe);
+                Other     -> Other
+            end,
+    {SUID,NeedSudo} = is_suid_and_root_owner(Exe),
+    if Root, User/=undefined, User/="", Users/=[] ->
         ok;
-        not Root, Users /= [] ->
-            {error, "Cannot restrict users {limit_users,Users} in non-root mode!"};
+    not Root, SUID, not NeedSudo, Users==[] ->
         ok;
-        not Root ->
-            ok;
-        true ->
-            {error, "Invalid root and user arguments"}
+    not Root, User/=undefined ->
+        {error, "Cannot specify effective user {user,User} in non-root mode!"};
+        ok;
+    not Root, Users/=[] ->
+        ok;
+    not Root ->
+        ok;
+    true ->
+        {error, "Invalid root and user arguments"}
     end.
 
 %%----------------------------------------------------------------------
@@ -1806,17 +1815,12 @@ exec_run_many_test_() ->
                 ?_assertMatch({ok, [{io_ops, M}, {success, N}]}, test_exec:run(N, 60000, Delay))}
         ]}.
 
+
 test_root() ->
     case os:getenv("NO_ROOT_TESTS") of
         false ->
-            ?AssertMatch(
-                {error, "Cannot specify effective user" ++ _},
-                dockerexec:start([{user, "xxxx"}, {limit_users, [yyyy]}])
-            ),
-            ?AssertMatch(
-                {error, "Cannot restrict users" ++ _},
-                dockerexec:start([{limit_users, [yyyy]}])
-            );
+            ?AssertMatch({error, "Cannot specify effective user"++_},
+                         dockerexec:start([{user, "xxxx"}, {limit_users, [yyyy]}]));
         _ ->
             ok
     end.
