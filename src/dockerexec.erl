@@ -54,7 +54,7 @@
 %%% $Header$
 %%%------------------------------------------------------------------------
 -module(dockerexec).
--author('saleyn@gmail.com').
+-author('tyler@sleepeasy.app').
 
 -behaviour(gen_server).
 
