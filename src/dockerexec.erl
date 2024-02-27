@@ -243,7 +243,7 @@
 %% <dl>
 %% <dt>monitor</dt>
 %%     <dd>Set up a monitor for the spawned process. The monitor is not
-%%         a standard `erlang:montior/2' function call, but it's emulated
+%%         a standard `erlang:monitor/2' function call, but it's emulated
 %%         by ensuring that the monitoring process receives notification
 %%         in the form:
 %%          ``{'DOWN', OsPid::integer(), process, Pid::pid(), Reason}''.

@@ -1,5 +1,5 @@
 {application, dockerexec, [
-    {description, "OS Process Manager"},
+    {description, "OS process manager designed to run within Docker"},
     {vsn, "2.0.3"},
     {id, "dockerexec"},
     {modules, []},
