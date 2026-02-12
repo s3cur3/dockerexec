@@ -10,6 +10,8 @@ CXXFLAGS  += -g -std=c++11 -finline-functions -Wall -DHAVE_PTRACE -MMD
 USE_POLL  ?= 1
 
 UNAME_SYS := $(shell uname -s | tr 'A-Z' 'a-z')
+MACOS_SDKROOT := $(shell xcrun --sdk macosx --show-sdk-path 2>/dev/null)
+MACOS_CXX_INC := $(MACOS_SDKROOT)/usr/include/c++/v1
 
 # System type and C compiler/flags.
 
@@ -81,6 +83,12 @@ ifeq ($(UNAME_SYS),linux)
 else ifeq ($(UNAME_SYS),darwin)
   CXXFLAGS += -pie -DHAVE_SETREUID -Wno-unused-command-line-argument
   LDFLAGS  += -flat_namespace -undefined suppress $(X64)
+  # If CLT C++ headers are unavailable, fall back to SDK libc++ headers.
+  ifeq ($(wildcard /Library/Developer/CommandLineTools/usr/include/c++/v1/sstream),)
+    ifneq ($(wildcard $(MACOS_CXX_INC)/sstream),)
+      CPPFLAGS += -isystem $(MACOS_CXX_INC)
+    endif
+  endif
 else ifeq ($(uname_sys),solaris)
   CXXFLAGS += -dhave_setreuid
   LDFLAGS  += -lrt $(x64)
