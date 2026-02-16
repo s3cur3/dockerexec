@@ -1,5 +1,10 @@
 # dockerexec Changelog
 
+## v2.0.4
+
+- Fix bug in synchronous execution (#3, courtesy of new contributor @Valian)
+- Fix for header detection at build time on macOS (#3, courtesy of new contributor @Valian)
+
 ## v2.0.3
 
 Forked erlexec and named it dockerexec.
