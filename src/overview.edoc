@@ -370,6 +370,12 @@ Got: {stdout,26143,<<"baz\nbar\nfoo\n">>}
 '''
 
 === Running OS commands synchronously ===
+
+When `sync' is used with `dockerexec:run/3', the `Timeout' argument is the total
+wait budget (startup + output collection + process exit wait). If this timeout is
+reached, the child process is terminated and `run/3' returns
+`{error, [{exit_status, 124} | ...]}'.
+
 ```
 % Execute an shell script that blocks for 1 second and return its termination code
 29> dockerexec:run("sleep 1; echo Test", [sync]).

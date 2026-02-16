@@ -252,7 +252,11 @@
 %%         the returned `Status' can be decoded with `status/1' to determine
 %%         the exit code of the process and if it was killed by signal.
 %%     </dd>
-%% <dt>sync</dt><dd>Block the caller until the OS command exits</dd>
+%% <dt>sync</dt>
+%%     <dd>Block the caller until the OS command exits. In `run/3' this wait
+%%         is bounded by `Timeout' (including startup and output collection).
+%%         On timeout the process is terminated and returns
+%%         `{error, [{exit_status, 124} | _]}`.</dd>
 %% <dt>{executable, Executable::string()}</dt>
 %%     <dd>Specifies a replacement program to execute. It is very seldom
 %%         needed. When the port program executes a child process using
@@ -490,7 +494,10 @@ start(Options) when is_list(Options) ->
 %%      the new process. If `sync' is specified in `Options' the return
 %%      value is `{ok, Status}' where `Status' is OS process exit status.
 %%      The `Status' can be decoded with `status/1' to determine the
-%%      process's exit code and if it was killed by signal.
+%%      process's exit code and if it was killed by signal. In `sync' mode
+%%      `Timeout' is the total wait budget. On timeout the process is
+%%      terminated and this function returns
+%%      `{error, [{exit_status, 124} | _]}`.
 %% @end
 %%-------------------------------------------------------------------------
 -spec run(cmd(), cmd_options(), integer()) ->
@@ -1119,6 +1126,7 @@ wait_port_exit(Port) ->
 -spec do_run(Cmd :: any(), Options :: cmd_options(), Timeout :: integer()) ->
     {ok, pid(), ospid()} | {ok, [{stdout | stderr, [binary()]}]} | {error, any()}.
 do_run(Cmd, Options, Timeout) when is_integer(Timeout) ->
+    StartMs = erlang:monotonic_time(millisecond),
     Link =
         case {proplists:get_bool(link, Options), proplists:get_bool(monitor, Options)} of
             {true, _} -> link;
@@ -1129,31 +1137,71 @@ do_run(Cmd, Options, Timeout) when is_integer(Timeout) ->
     Cmd2 = {port, {Cmd, Link, Sync}},
     case gen_server:call(?MODULE, Cmd2, Timeout) of
         {ok, Pid, OsPid, _Sync = true} ->
-            wait_for_ospid_exit(OsPid, Pid, [], []);
+            wait_for_ospid_exit(OsPid, Pid, [], [], remaining_timeout(StartMs, Timeout));
         {ok, Pid, OsPid, _} ->
             {ok, Pid, OsPid};
         {error, Reason} ->
             {error, Reason}
     end.
 
-wait_for_ospid_exit(OsPid, Pid, OutAcc, ErrAcc) ->
-    % Note when a monitored process exits
-    receive
-        {stdout, OsPid, Data} ->
-            wait_for_ospid_exit(OsPid, Pid, [Data | OutAcc], ErrAcc);
-        {stderr, OsPid, Data} ->
-            wait_for_ospid_exit(OsPid, Pid, OutAcc, [Data | ErrAcc]);
-        {'DOWN', OsPid, process, Pid, normal} ->
-            {ok, sync_res(OutAcc, ErrAcc)};
-        {'DOWN', OsPid, process, Pid, noproc} ->
-            {ok, sync_res(OutAcc, ErrAcc)};
-        {'DOWN', OsPid, process, Pid, {exit_status, _} = R} ->
-            {error, [R | sync_res(OutAcc, ErrAcc)]}
+remaining_timeout(StartMs, Timeout) ->
+    Elapsed = erlang:monotonic_time(millisecond) - StartMs,
+    case Timeout - Elapsed of
+        Rem when Rem > 0 -> Rem;
+        _ -> 0
+    end.
+
+wait_for_ospid_exit(OsPid, _Pid, OutAcc, ErrAcc, Timeout) when Timeout =< 0 ->
+    terminate_timed_out_ospid(OsPid),
+    {error, sync_timeout_res(OutAcc, ErrAcc)};
+wait_for_ospid_exit(OsPid, Pid, OutAcc, ErrAcc, Timeout) ->
+    Deadline = erlang:monotonic_time(millisecond) + Timeout,
+    wait_for_ospid_exit_until(OsPid, Pid, OutAcc, ErrAcc, Deadline).
+
+wait_for_ospid_exit_until(OsPid, Pid, OutAcc, ErrAcc, Deadline) ->
+    Wait = Deadline - erlang:monotonic_time(millisecond),
+    if
+        Wait =< 0 ->
+            terminate_timed_out_ospid(OsPid),
+            {error, sync_timeout_res(OutAcc, ErrAcc)};
+        true ->
+            % Note when a monitored process exits
+            receive
+                {stdout, OsPid, Data} ->
+                    wait_for_ospid_exit_until(OsPid, Pid, [Data | OutAcc], ErrAcc, Deadline);
+                {stderr, OsPid, Data} ->
+                    wait_for_ospid_exit_until(OsPid, Pid, OutAcc, [Data | ErrAcc], Deadline);
+                {'DOWN', OsPid, process, Pid, normal} ->
+                    {ok, sync_res(OutAcc, ErrAcc)};
+                {'DOWN', OsPid, process, Pid, noproc} ->
+                    {ok, sync_res(OutAcc, ErrAcc)};
+                {'DOWN', OsPid, process, Pid, {exit_status, _} = R} ->
+                    {error, [R | sync_res(OutAcc, ErrAcc)]}
+            after Wait ->
+                terminate_timed_out_ospid(OsPid),
+                {error, sync_timeout_res(OutAcc, ErrAcc)}
+            end
     end.
 
 sync_res([], []) -> [];
 sync_res([], L) -> [{stderr, lists:reverse(L)}];
 sync_res(LO, LE) -> [{stdout, lists:reverse(LO)} | sync_res([], LE)].
+
+sync_timeout_res(OutAcc, ErrAcc) ->
+    [{exit_status, 124} | sync_res(OutAcc, ErrAcc)].
+
+terminate_timed_out_ospid(OsPid) ->
+    case catch gen_server:call(?MODULE, {port, {stop, OsPid}}, 1000) of
+        ok ->
+            ok;
+        _ ->
+            _ = catch gen_server:call(
+                ?MODULE,
+                {port, {kill, OsPid, signal_to_int(sigterm)}},
+                1000
+            ),
+            ok
+    end.
 
 %% Add a link for Pid to OsPid if requested.
 maybe_add_monitor({pid, OsPid}, Pid, MonType, Sync, PidOpts, Debug) when is_integer(OsPid) ->
@@ -1770,6 +1818,7 @@ exec_test_() ->
             ?tt(test_root()),
             ?tt(test_monitor()),
             ?tt(test_sync()),
+            ?tt(test_sync_timeout()),
             ?tt(test_winsz()),
             ?tt(test_stdin()),
             ?tt(test_stdin_eof()),
@@ -1842,6 +1891,12 @@ test_sync() ->
         {ok, [{stdout, [<<"\n">>]}]},
         dockerexec:run(["/bin/echo"], [sync, stdout])
     ).
+
+test_sync_timeout() ->
+    T0 = erlang:monotonic_time(millisecond),
+    Res = dockerexec:run("sleep 60", [sync], 100),
+    ?AssertMatch({error, [{exit_status, 124} | _]}, Res),
+    ?assert(erlang:monotonic_time(millisecond) - T0 < 3000).
 
 test_winsz() ->
     {ok, P, I} = dockerexec:run(
