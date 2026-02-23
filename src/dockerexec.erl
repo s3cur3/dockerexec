@@ -821,21 +821,37 @@ default(portexe) ->
             error_logger:warning_msg("Priv directory not available", []),
             "";
         Priv ->
-            % Find all ports using wildcard for resiliency
-            Bin =
-                case filelib:wildcard("*/exec-port", Priv) of
-                    [Port] ->
-                        Port;
-                    _ ->
-                        Arch = erlang:system_info(system_architecture),
-                        Tail = filename:join([Arch, "exec-port"]),
-                        os:find_executable(filename:join([Priv, Tail]))
-                end,
-            % Join the priv/port path
-            filename:join([Priv, Bin])
+            Arch = erlang:system_info(system_architecture),
+            resolve_portexe(Priv, Arch)
     end;
 default(Option) ->
     proplists:get_value(Option, default()).
+
+resolve_portexe(Priv, Arch) ->
+    Wildcards = filelib:wildcard("*/exec-port", Priv),
+    case Wildcards of
+        [Port] ->
+            filename:join([Priv, Port]);
+        Ports ->
+            Tail = filename:join([Arch, "exec-port"]),
+            Preferred = filename:join([Priv, Tail]),
+            case os:find_executable(Preferred) of
+                false ->
+                    first_executable(Priv, Ports, Preferred);
+                Bin ->
+                    Bin
+            end
+    end.
+
+first_executable(_Priv, [], Fallback) ->
+    Fallback;
+first_executable(Priv, [Port | Rest], Fallback) ->
+    case os:find_executable(filename:join([Priv, Port])) of
+        false ->
+            first_executable(Priv, Rest, Fallback);
+        Bin ->
+            Bin
+    end.
 
 %%%----------------------------------------------------------------------
 %%% Callback functions from gen_server
@@ -1795,6 +1811,39 @@ temp_file() ->
     Dir = temp_dir(),
     {I1, I2, I3} = erlang:timestamp(),
     filename:join(Dir, io_lib:format("exec_temp_~w_~w_~w", [I1, I2, I3])).
+
+write_executable(Path) ->
+    ok = filelib:ensure_dir(Path),
+    ok = file:write_file(Path, "#!/bin/sh\nexit 0\n"),
+    ok = file:change_mode(Path, 8#755).
+
+resolve_portexe_uses_wildcard_when_arch_missing_test() ->
+    Priv = temp_file() ++ "_priv",
+    P1 = filename:join([Priv, "arm64-apple-darwin22.6.0", "exec-port"]),
+    P2 = filename:join([Priv, "arm64-apple-darwin23.5.0", "exec-port"]),
+    try
+        ok = write_executable(P1),
+        ok = write_executable(P2),
+        Found = resolve_portexe(Priv, "aarch64-apple-darwin"),
+        ?assert(lists:member(Found, [P1, P2])),
+        ?assertEqual(false, lists:suffix("/false", Found))
+    after
+        ok = file:del_dir_r(Priv)
+    end.
+
+resolve_portexe_prefers_arch_match_test() ->
+    Priv = temp_file() ++ "_priv",
+    Preferred = filename:join([Priv, "aarch64-apple-darwin", "exec-port"]),
+    P1 = filename:join([Priv, "arm64-apple-darwin22.6.0", "exec-port"]),
+    P2 = filename:join([Priv, "arm64-apple-darwin23.5.0", "exec-port"]),
+    try
+        ok = write_executable(P1),
+        ok = write_executable(P2),
+        ok = write_executable(Preferred),
+        ?assertEqual(Preferred, resolve_portexe(Priv, "aarch64-apple-darwin"))
+    after
+        ok = file:del_dir_r(Priv)
+    end.
 
 exec_test_() ->
     {setup,
